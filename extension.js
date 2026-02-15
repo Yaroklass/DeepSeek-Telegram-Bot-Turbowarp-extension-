@@ -135,7 +135,7 @@
         jsonHas(args) {
             try {
                 const obj = JSON.parse(args.JSON);
-                return args.PATH.split(".").every(k => (obj = obj?.[k]) !== undefined);
+                return args.PATH.split(".").every(k => (obj = obj?.[k]) !== undefined); 
             } catch {
                 return false;
             }
@@ -144,3 +144,4 @@
 
     Scratch.extensions.register(new DeepSeekTelegram());
 })(Scratch);
+
