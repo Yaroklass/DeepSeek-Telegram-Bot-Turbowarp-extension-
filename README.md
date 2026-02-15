@@ -39,7 +39,7 @@ https://turbowarp.org/editor
 
 Extensions → Custom Extension
 
-3. Paste the **raw URL** of `extension.js` from this repository.
+3. Paste the **raw URL** of `extension.js` from this repository or paste link https://cdn.jsdelivr.net/gh/Yaroklass/DeepSeek-Telegram-Bot-Turbowarp-extension/extension.js.
 
 4. The extension will appear in the blocks menu.
 
