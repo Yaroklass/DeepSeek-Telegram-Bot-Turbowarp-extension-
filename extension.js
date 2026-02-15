@@ -1,6 +1,4 @@
 (function(Scratch) {
-    const vm = Scratch.vm;
-
     let TELEGRAM_TOKEN = "";
     let DEEPSEEK_API_KEY = "";
     let LAST_UPDATE_ID = 0;
@@ -135,3 +133,4 @@
 
     Scratch.extensions.register(new DeepSeekTelegram());
 })(Scratch);
+
