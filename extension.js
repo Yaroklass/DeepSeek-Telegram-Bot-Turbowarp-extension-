@@ -80,7 +80,7 @@
         getUpdates() {
             if (!TELEGRAM_TOKEN) return "";
 
-            post("http://localhost:3000/telegram/getUpdates", {
+            post("http://127.0.0.1:3000/telegram/getUpdates", {
                 token: TELEGRAM_TOKEN,
                 offset: LAST_UPDATE_ID + 1
             }, (data) => {
@@ -111,25 +111,17 @@
             const prompt = args.MSG;
             const chatId = args.CHAT;
 
-            post("http://localhost:3000/deepseek/chat", {
+            post("http://127.0.0.1:3000/deepseek/chat", {
                 apiKey: DEEPSEEK_API_KEY,
-                prompt: prompt
-            }, (dsData) => {
-                if (!dsData || !dsData.choices || !dsData.choices.length) return;
-                const answer = dsData.choices[0].message.content;
-
-                post("http://localhost:3000/telegram/sendMessage", {
-                    token: TELEGRAM_TOKEN,
-                    chat_id: chatId,
-                    text: answer
-                }, () => {});
-            });
+                prompt: prompt,
+                chat_id: chatId
+            }, () => {});
         }
 
         sendPlainMessage(args) {
             if (!TELEGRAM_TOKEN) return;
 
-            post("http://localhost:3000/telegram/sendMessage", {
+            post("http://127.0.0.1:3000/telegram/sendMessage", {
                 token: TELEGRAM_TOKEN,
                 chat_id: args.CHAT,
                 text: args.MSG
