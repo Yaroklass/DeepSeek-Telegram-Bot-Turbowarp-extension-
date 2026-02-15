@@ -24,9 +24,10 @@ The extension provides blocks for receiving messages, sending replies, and gener
 
 1. Upload all files to GitHub (or any static hosting).
 2. Copy the **raw URL** of `extension.js`.
-3. Open TurboWarp → Extensions → **Custom Extension**.
-4. Paste the URL.
-5. Use the blocks in your project.
+3. Open server.py
+4. Open TurboWarp → Extensions → **Custom Extension**.
+5. Paste the URL.
+6. Use the blocks in your project.
 
 ## Setup in Your Project
 
@@ -55,6 +56,7 @@ reply with DeepSeek to (last message text) for chat (last chat id)
 - Telegram Bot Token (via @BotTurboWarp)
 - DeepSeek API Key
 - TurboWarp (desktop or web)
+- Python (With flask)
 
 ## Icon
 
