@@ -1,7 +1,24 @@
-(function(Scratch) {
+(function (Scratch) {
     let TELEGRAM_TOKEN = "";
     let DEEPSEEK_API_KEY = "";
     let LAST_UPDATE_ID = 0;
+    let LAST_MESSAGE = null;
+
+    function post(url, body, callback) {
+        Scratch.vm.runtime.ioDevices.network.request({
+            url: url,
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        }, (res) => {
+            if (!res || !res.text) return callback(null);
+            try {
+                callback(JSON.parse(res.text));
+            } catch (e) {
+                callback(null);
+            }
+        });
+    }
 
     class DeepSeekTelegram {
         getInfo() {
@@ -60,79 +77,63 @@
             DEEPSEEK_API_KEY = args.DS;
         }
 
-        async getUpdates() {
+        getUpdates() {
             if (!TELEGRAM_TOKEN) return "";
-            const res = await fetch("http://localhost:3000/telegram/getUpdates", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    token: TELEGRAM_TOKEN,
-                    offset: LAST_UPDATE_ID + 1
-                })
+
+            post("http://localhost:3000/telegram/getUpdates", {
+                token: TELEGRAM_TOKEN,
+                offset: LAST_UPDATE_ID + 1
+            }, (data) => {
+                if (!data || !data.ok || !data.result || !data.result.length) return;
+                const last = data.result[data.result.length - 1];
+                LAST_UPDATE_ID = last.update_id;
+                LAST_MESSAGE = last;
             });
-            const data = await res.json();
-            if (!data.ok || !data.result || !data.result.length) return "";
-            const last = data.result[data.result.length - 1];
-            LAST_UPDATE_ID = last.update_id;
-            this._lastMessage = last;
-            return JSON.stringify(data.result);
+
+            return LAST_MESSAGE ? JSON.stringify(LAST_MESSAGE) : "";
         }
 
         getLastMessageText() {
-            if (!this._lastMessage) return "";
-            if (!this._lastMessage.message || !this._lastMessage.message.text) return "";
-            return this._lastMessage.message.text;
+            if (!LAST_MESSAGE) return "";
+            if (!LAST_MESSAGE.message || !LAST_MESSAGE.message.text) return "";
+            return LAST_MESSAGE.message.text;
         }
 
         getLastChatId() {
-            if (!this._lastMessage) return "";
-            if (!this._lastMessage.message || !this._lastMessage.message.chat || !this._lastMessage.message.chat.id) return "";
-            return String(this._lastMessage.message.chat.id);
+            if (!LAST_MESSAGE) return "";
+            if (!LAST_MESSAGE.message || !LAST_MESSAGE.message.chat) return "";
+            return String(LAST_MESSAGE.message.chat.id);
         }
 
-        async sendDeepSeekReply(args) {
+        sendDeepSeekReply(args) {
             if (!DEEPSEEK_API_KEY || !TELEGRAM_TOKEN) return;
+
             const prompt = args.MSG;
             const chatId = args.CHAT;
 
-            const dsRes = await fetch("http://localhost:3000/deepseek/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    apiKey: DEEPSEEK_API_KEY,
-                    prompt
-                })
-            });
+            post("http://localhost:3000/deepseek/chat", {
+                apiKey: DEEPSEEK_API_KEY,
+                prompt: prompt
+            }, (dsData) => {
+                if (!dsData || !dsData.choices || !dsData.choices.length) return;
+                const answer = dsData.choices[0].message.content;
 
-            const dsData = await dsRes.json();
-            if (!dsData.choices || !dsData.choices.length) return;
-            const answer = dsData.choices[0].message.content;
-
-            await fetch("http://localhost:3000/telegram/sendMessage", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                post("http://localhost:3000/telegram/sendMessage", {
                     token: TELEGRAM_TOKEN,
                     chat_id: chatId,
                     text: answer
-                })
+                }, () => {});
             });
         }
 
-        async sendPlainMessage(args) {
+        sendPlainMessage(args) {
             if (!TELEGRAM_TOKEN) return;
-            const msg = args.MSG;
-            const chatId = args.CHAT;
 
-            await fetch("http://localhost:3000/telegram/sendMessage", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    token: TELEGRAM_TOKEN,
-                    chat_id: chatId,
-                    text: msg
-                })
-            });
+            post("http://localhost:3000/telegram/sendMessage", {
+                token: TELEGRAM_TOKEN,
+                chat_id: args.CHAT,
+                text: args.MSG
+            }, () => {});
         }
     }
 
