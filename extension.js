@@ -1,26 +1,10 @@
 (function (Scratch) {
-    let TELEGRAM_TOKEN = "";
-    let DEEPSEEK_API_KEY = "";
-    let LAST_UPDATE_ID = 0;
-    let LAST_MESSAGE = null;
-
-    function post(url, body, callback) {
-        Scratch.vm.runtime.ioDevices.network.request({
-            url: url,
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        }, (res) => {
-            if (!res || !res.text) return callback(null);
-            try {
-                callback(JSON.parse(res.text));
-            } catch (e) {
-                callback(null);
-            }
-        });
-    }
-
     class DeepSeekTelegram {
+        constructor() {
+            this.tg = "";
+            this.ds = "";
+        }
+
         getInfo() {
             return {
                 id: "deepseektelegram",
@@ -38,34 +22,31 @@
                     {
                         opcode: "getUpdates",
                         blockType: Scratch.BlockType.REPORTER,
-                        text: "get Telegram updates"
+                        text: "get Telegram updates (JSON)"
                     },
                     {
-                        opcode: "getLastMessageText",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "last message text"
-                    },
-                    {
-                        opcode: "getLastChatId",
-                        blockType: Scratch.BlockType.REPORTER,
-                        text: "last chat id"
-                    },
-                    {
-                        opcode: "sendDeepSeekReply",
+                        opcode: "sendMessage",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "reply with DeepSeek to [MSG] for chat [CHAT]",
+                        text: "send message [MSG] to chat [CHAT]",
                         arguments: {
                             MSG: { type: Scratch.ArgumentType.STRING },
                             CHAT: { type: Scratch.ArgumentType.STRING }
                         }
                     },
                     {
-                        opcode: "sendPlainMessage",
-                        blockType: Scratch.BlockType.COMMAND,
-                        text: "send message [MSG] to chat [CHAT]",
+                        opcode: "deepseekReply",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "DeepSeek reply to [MSG]",
                         arguments: {
-                            MSG: { type: Scratch.ArgumentType.STRING },
-                            CHAT: { type: Scratch.ArgumentType.STRING }
+                            MSG: { type: Scratch.ArgumentType.STRING }
+                        }
+                    },
+                    {
+                        opcode: "getPhotoBase64",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "download Telegram photo [FILEID]",
+                        arguments: {
+                            FILEID: { type: Scratch.ArgumentType.STRING }
                         }
                     }
                 ]
@@ -73,59 +54,57 @@
         }
 
         setTokens(args) {
-            TELEGRAM_TOKEN = args.TG;
-            DEEPSEEK_API_KEY = args.DS;
+            this.tg = args.TG;
+            this.ds = args.DS;
         }
 
-        getUpdates() {
-            if (!TELEGRAM_TOKEN) return "";
+        async getUpdates() {
+            const url = `https://api.telegram.org/bot${this.tg}/getUpdates`;
+            const r = await fetch(url);
+            return await r.text();
+        }
 
-            post("http://127.0.0.1:3000/telegram/getUpdates", {
-                token: TELEGRAM_TOKEN,
-                offset: LAST_UPDATE_ID + 1
-            }, (data) => {
-                if (!data || !data.ok || !data.result || !data.result.length) return;
-                const last = data.result[data.result.length - 1];
-                LAST_UPDATE_ID = last.update_id;
-                LAST_MESSAGE = last;
+        async sendMessage(args) {
+            const url = `https://api.telegram.org/bot${this.tg}/sendMessage`;
+            await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `chat_id=${args.CHAT}&text=${encodeURIComponent(args.MSG)}`
             });
-
-            return LAST_MESSAGE ? JSON.stringify(LAST_MESSAGE) : "";
         }
 
-        getLastMessageText() {
-            if (!LAST_MESSAGE) return "";
-            if (!LAST_MESSAGE.message || !LAST_MESSAGE.message.text) return "";
-            return LAST_MESSAGE.message.text;
+        async deepseekReply(args) {
+            const r = await fetch("https://api.deepseek.com/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${this.ds}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "deepseek-chat",
+                    messages: [{ role: "user", content: args.MSG }]
+                })
+            });
+            return await r.text();
         }
 
-        getLastChatId() {
-            if (!LAST_MESSAGE) return "";
-            if (!LAST_MESSAGE.message || !LAST_MESSAGE.message.chat) return "";
-            return String(LAST_MESSAGE.message.chat.id);
-        }
+        async getPhotoBase64(args) {
+            const fileInfo = await fetch(
+                `https://api.telegram.org/bot${this.tg}/getFile?file_id=${args.FILEID}`
+            );
+            const json = await fileInfo.json();
+            const path = json.result.file_path;
 
-        sendDeepSeekReply(args) {
-            if (!DEEPSEEK_API_KEY || !TELEGRAM_TOKEN) return;
+            const file = await fetch(
+                `https://api.telegram.org/file/bot${this.tg}/${path}`
+            );
+            const blob = await file.blob();
 
-            const prompt = args.MSG;
-            const chatId = args.CHAT;
-
-            post("http://127.0.0.1:3000/deepseek/chat", {
-                apiKey: DEEPSEEK_API_KEY,
-                prompt: prompt,
-                chat_id: chatId
-            }, () => {});
-        }
-
-        sendPlainMessage(args) {
-            if (!TELEGRAM_TOKEN) return;
-
-            post("http://127.0.0.1:3000/telegram/sendMessage", {
-                token: TELEGRAM_TOKEN,
-                chat_id: args.CHAT,
-                text: args.MSG
-            }, () => {});
+            return await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
         }
     }
 
