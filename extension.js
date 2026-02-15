@@ -48,6 +48,24 @@
                         arguments: {
                             FILEID: { type: Scratch.ArgumentType.STRING }
                         }
+                    },
+                    {
+                        opcode: "jsonGet",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "JSON get [PATH] from [JSON]",
+                        arguments: {
+                            PATH: { type: Scratch.ArgumentType.STRING },
+                            JSON: { type: Scratch.ArgumentType.STRING }
+                        }
+                    },
+                    {
+                        opcode: "jsonHas",
+                        blockType: Scratch.BlockType.BOOLEAN,
+                        text: "JSON has [PATH] in [JSON]",
+                        arguments: {
+                            PATH: { type: Scratch.ArgumentType.STRING },
+                            JSON: { type: Scratch.ArgumentType.STRING }
+                        }
                     }
                 ]
             };
@@ -59,14 +77,12 @@
         }
 
         async getUpdates() {
-            const url = `https://api.telegram.org/bot${this.tg}/getUpdates`;
-            const r = await fetch(url);
+            const r = await fetch(`https://api.telegram.org/bot${this.tg}/getUpdates`);
             return await r.text();
         }
 
         async sendMessage(args) {
-            const url = `https://api.telegram.org/bot${this.tg}/sendMessage`;
-            await fetch(url, {
+            await fetch(`https://api.telegram.org/bot${this.tg}/sendMessage`, {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: `chat_id=${args.CHAT}&text=${encodeURIComponent(args.MSG)}`
@@ -89,10 +105,10 @@
         }
 
         async getPhotoBase64(args) {
-            const fileInfo = await fetch(
+            const info = await fetch(
                 `https://api.telegram.org/bot${this.tg}/getFile?file_id=${args.FILEID}`
             );
-            const json = await fileInfo.json();
+            const json = await info.json();
             const path = json.result.file_path;
 
             const file = await fetch(
@@ -105,6 +121,24 @@
                 reader.onloadend = () => resolve(reader.result);
                 reader.readAsDataURL(blob);
             });
+        }
+
+        jsonGet(args) {
+            try {
+                const obj = JSON.parse(args.JSON);
+                return args.PATH.split(".").reduce((o, k) => (o ? o[k] : ""), obj) ?? "";
+            } catch {
+                return "";
+            }
+        }
+
+        jsonHas(args) {
+            try {
+                const obj = JSON.parse(args.JSON);
+                return args.PATH.split(".").every(k => (obj = obj?.[k]) !== undefined);
+            } catch {
+                return false;
+            }
         }
     }
 
