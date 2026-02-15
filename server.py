@@ -22,6 +22,5 @@ if __name__ == "__main__":
     print("server.py running...")
     while True:
         cmd = wait_for_command()
-        # server.py просто передаёт команду connect.pyw
         with open("bridge.txt", "w", encoding="utf-8") as f:
             f.write(cmd)
