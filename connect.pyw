@@ -1,86 +1,72 @@
 import os
 import time
 import requests
-from urllib.parse import unquote
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-COMMAND_FILE = os.path.join(BASE_DIR, "command.txt")
-RESPONSE_FILE = os.path.join(BASE_DIR, "response.txt")
+BASE = os.path.dirname(os.path.abspath(__file__))
+BRIDGE = os.path.join(BASE, "bridge.txt")
+RESP = os.path.join(BASE, "response.txt")
 
-TELEGRAM_API_BASE = "https://api.telegram.org/bot"
-DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
+TG_TOKEN = ""
+DS_KEY = ""
 
-def parse_command(line):
-    parts = line.strip().split("|")
-    if not parts:
-        return None, {}
-    cmd_type = parts[0]
-    args = {}
-    for p in parts[1:]:
-        if "=" in p:
-            k, v = p.split("=", 1)
-            args[k] = unquote(v)
-    return cmd_type, args
-
-def handle_get_updates(token, offset):
-    url = f"{TELEGRAM_API_BASE}{token}/getUpdates"
+def send_tg_message(chat, text):
+    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
     try:
-        r = requests.get(url, params={"offset": int(offset)}, timeout=10)
+        r = requests.post(url, data={"chat_id": chat, "text": text})
         return r.text
-    except Exception:
-        return '{"ok":false,"result":[]}'
+    except:
+        return "TG_ERROR"
 
-def handle_send_message(token, chat_id, text):
-    url = f"{TELEGRAM_API_BASE}{token}/sendMessage"
+def get_updates():
+    url = f"https://api.telegram.org/bot{TG_TOKEN}/getUpdates"
     try:
-        r = requests.post(url, data={"chat_id": chat_id, "text": text}, timeout=10)
+        r = requests.get(url)
         return r.text
-    except Exception:
-        return '{"ok":false}'
+    except:
+        return "TG_ERROR"
 
-def handle_deepseek_chat(api_key, prompt, chat_id):
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "deepseek-chat",
-        "messages": [
-            {"role": "user", "content": prompt}
-        ]
-    }
+def deepseek(prompt):
+    url = "https://api.deepseek.com/chat/completions"
+    headers = {"Authorization": f"Bearer {DS_KEY}", "Content-Type": "application/json"}
+    data = {"model": "deepseek-chat", "messages": [{"role": "user", "content": prompt}]}
     try:
-        r = requests.post(DEEPSEEK_API_URL, json=payload, headers=headers, timeout=30)
+        r = requests.post(url, json=data, headers=headers)
         return r.text
-    except Exception:
-        return '{"error":"deepseek_failed"}'
+    except:
+        return "DS_ERROR"
 
-def main_loop():
+def write_response(text):
+    with open(RESP, "w", encoding="utf-8") as f:
+        f.write(text)
+
+def wait_bridge():
     while True:
-        if os.path.exists(COMMAND_FILE):
-            try:
-                with open(COMMAND_FILE, "r", encoding="utf-8") as f:
-                    line = f.read()
-                if line.strip():
-                    cmd_type, args = parse_command(line)
-                    result = ""
-                    if cmd_type == "GET_UPDATES":
-                        result = handle_get_updates(args.get("token", ""), args.get("offset", "0"))
-                    elif cmd_type == "SEND_MESSAGE":
-                        result = handle_send_message(args.get("token", ""), args.get("chat_id", ""), args.get("text", ""))
-                    elif cmd_type == "DEEPSEEK_CHAT":
-                        result = handle_deepseek_chat(args.get("api_key", ""), args.get("prompt", ""), args.get("chat_id", ""))
-                    with open(RESPONSE_FILE, "w", encoding="utf-8") as rf:
-                        rf.write(result)
-                # очищаем команду
-                os.remove(COMMAND_FILE)
-            except Exception:
-                try:
-                    if os.path.exists(COMMAND_FILE):
-                        os.remove(COMMAND_FILE)
-                except Exception:
-                    pass
+        if os.path.exists(BRIDGE):
+            with open(BRIDGE, "r", encoding="utf-8") as f:
+                data = f.read().strip()
+            os.remove(BRIDGE)
+            return data
         time.sleep(0.05)
 
 if __name__ == "__main__":
-    main_loop()
+    while True:
+        cmd = wait_bridge()
+        parts = cmd.split("|")
+
+        if parts[0] == "SET_TOKENS":
+            TG_TOKEN = parts[1]
+            DS_KEY = parts[2]
+            write_response("OK")
+
+        elif parts[0] == "GET_UPDATES":
+            write_response(get_updates())
+
+        elif parts[0] == "SEND_MESSAGE":
+            chat = parts[1]
+            msg = parts[2]
+            write_response(send_tg_message(chat, msg))
+
+        elif parts[0] == "DEEPSEEK":
+            prompt = parts[1]
+            write_response(deepseek(prompt))
+
