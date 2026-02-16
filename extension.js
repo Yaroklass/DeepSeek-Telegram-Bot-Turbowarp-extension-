@@ -142,16 +142,16 @@
 
         getCommandsMenu() {
             const arr = this.commands.slice();
-            arr.push("────────────");
-            arr.push("Add command…");
+            arr.push("---");
+            arr.push("Add command");
             return arr;
         }
 
         getValuesMenu() {
             const arr = this.values.slice();
-            arr.push("────────────");
-            arr.push("Add value…");
-            arr.push("Delete value…");
+            arr.push("---");
+            arr.push("Add value");
+            arr.push("Delete value");
             return arr;
         }
 
@@ -277,7 +277,7 @@
         async whenCommand(args) {
             const cmd = args.CMD;
 
-            if (cmd === "Add command…") {
+            if (cmd === "Add command") {
                 const name = prompt("Enter new command:");
                 if (name) {
                     const trimmed = name.trim();
@@ -291,7 +291,7 @@
             await this.pollUpdates();
 
             if (!this.lastEvent.command) return false;
-            if (cmd === "────────────") return false;
+            if (cmd === "---") return false;
 
             return this.lastEvent.command === cmd;
         }
