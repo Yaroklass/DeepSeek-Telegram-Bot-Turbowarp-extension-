@@ -32,6 +32,13 @@
                 name: "DeepSeek Telegram Bot",
                 blocks: [
                     {
+                        opcode: "poll",
+                        blockType: Scratch.BlockType.HAT,
+                        isEdgeActivated: false,
+                        text: "poll Telegram"
+                    },
+
+                    {
                         opcode: "setTokens",
                         blockType: Scratch.BlockType.COMMAND,
                         text: "set Telegram token [TG] and DeepSeek key [DS]",
@@ -155,6 +162,13 @@
                     }
                 ]
             };
+        }
+
+        /* -------------------- SYSTEM POLLING -------------------- */
+
+        async poll() {
+            await this.pollUpdates();
+            return false;
         }
 
         /* -------------------- VALUE STORAGE -------------------- */
