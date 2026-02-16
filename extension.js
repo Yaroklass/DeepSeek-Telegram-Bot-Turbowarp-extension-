@@ -34,7 +34,7 @@
                     {
                         opcode: "poll",
                         blockType: Scratch.BlockType.HAT,
-                        isEdgeActivated: false,
+                        isEdgeActivated: true,
                         text: "poll Telegram"
                     },
 
@@ -417,3 +417,4 @@
 
     Scratch.extensions.register(new DeepSeekTelegram());
 })(Scratch);
+
