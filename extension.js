@@ -7,9 +7,12 @@
         constructor() {
             this.tg = "";
             this.ds = "";
+
             this.commands = ["start", "message", "image", "messageandimage", "stop"];
+
             this.values = [];
             this.valueStore = {};
+
             this.lastUpdateId = 0;
             this.lastEvent = {
                 command: "",
@@ -18,6 +21,7 @@
                 chatId: "",
                 stamp: 0
             };
+
             this.lastPollTime = 0;
         }
 
@@ -35,6 +39,7 @@
                             DS: { type: Scratch.ArgumentType.STRING }
                         }
                     },
+
                     {
                         opcode: "addCommand",
                         blockType: Scratch.BlockType.COMMAND,
@@ -43,6 +48,7 @@
                             NAME: { type: Scratch.ArgumentType.STRING }
                         }
                     },
+
                     {
                         opcode: "whenCommand",
                         blockType: Scratch.BlockType.HAT,
@@ -52,21 +58,25 @@
                             CMD: { type: Scratch.ArgumentType.STRING }
                         }
                     },
+
                     {
                         opcode: "getCommandText",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "Telegram command text"
                     },
+
                     {
                         opcode: "getCommandPhoto",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "Telegram command photo"
                     },
+
                     {
                         opcode: "getChatId",
                         blockType: Scratch.BlockType.REPORTER,
                         text: "Telegram chat id"
                     },
+
                     {
                         opcode: "sendMessage",
                         blockType: Scratch.BlockType.COMMAND,
@@ -76,6 +86,7 @@
                             CHAT: { type: Scratch.ArgumentType.STRING }
                         }
                     },
+
                     {
                         opcode: "deepseekReply",
                         blockType: Scratch.BlockType.REPORTER,
@@ -84,6 +95,7 @@
                             MSG: { type: Scratch.ArgumentType.STRING }
                         }
                     },
+
                     {
                         opcode: "deepseekVisionReply",
                         blockType: Scratch.BlockType.REPORTER,
@@ -93,6 +105,7 @@
                             TXT: { type: Scratch.ArgumentType.STRING }
                         }
                     },
+
                     {
                         opcode: "addValue",
                         blockType: Scratch.BlockType.COMMAND,
@@ -101,6 +114,17 @@
                             NAME: { type: Scratch.ArgumentType.STRING }
                         }
                     },
+
+                    {
+                        opcode: "setValueTo",
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: "set value [NAME] to [TEXT]",
+                        arguments: {
+                            NAME: { type: Scratch.ArgumentType.STRING },
+                            TEXT: { type: Scratch.ArgumentType.STRING }
+                        }
+                    },
+
                     {
                         opcode: "deleteValue",
                         blockType: Scratch.BlockType.COMMAND,
@@ -109,6 +133,7 @@
                             NAME: { type: Scratch.ArgumentType.STRING }
                         }
                     },
+
                     {
                         opcode: "getValue",
                         blockType: Scratch.BlockType.REPORTER,
@@ -116,20 +141,22 @@
                         arguments: {
                             NAME: { type: Scratch.ArgumentType.STRING }
                         }
+                    },
+
+                    {
+                        opcode: "httpRequest",
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: "http request [URL] with body [BODY]",
+                        arguments: {
+                            URL: { type: Scratch.ArgumentType.STRING },
+                            BODY: { type: Scratch.ArgumentType.STRING }
+                        }
                     }
                 ]
             };
         }
 
-        /* -------------------- COMMAND MANAGEMENT -------------------- */
-
-        addCommand(args) {
-            const name = (args.NAME || "").trim();
-            if (!name) return;
-            if (!this.commands.includes(name)) {
-                this.commands.push(name);
-            }
-        }
+        /* -------------------- VALUE STORAGE -------------------- */
 
         addValue(args) {
             const name = (args.NAME || "").trim();
@@ -138,6 +165,13 @@
                 this.values.push(name);
                 this.valueStore[name] = "";
             }
+        }
+
+        setValueTo(args) {
+            const name = (args.NAME || "").trim();
+            const text = args.TEXT || "";
+            if (!name) return;
+            this.valueStore[name] = text;
         }
 
         deleteValue(args) {
@@ -154,6 +188,16 @@
             return this.valueStore[name] || "";
         }
 
+        /* -------------------- COMMAND MANAGEMENT -------------------- */
+
+        addCommand(args) {
+            const name = (args.NAME || "").trim();
+            if (!name) return;
+            if (!this.commands.includes(name)) {
+                this.commands.push(name);
+            }
+        }
+
         /* -------------------- TELEGRAM POLLING -------------------- */
 
         async pollUpdates() {
@@ -163,6 +207,7 @@
             if (!this.tg) return;
 
             const url = `https://api.telegram.org/bot${this.tg}/getUpdates?timeout=0&offset=${this.lastUpdateId + 1}`;
+
             let res;
             try {
                 res = await fetch(url);
@@ -291,9 +336,7 @@
                     })
                 });
                 const j = await r.json();
-                const choice = j.choices && j.choices[0];
-                const content = choice && choice.message && choice.message.content;
-                return content || "";
+                return j.choices?.[0]?.message?.content || "";
             } catch {
                 return "";
             }
@@ -324,11 +367,30 @@
                     })
                 });
                 const j = await r.json();
-                const choice = j.choices && j.choices[0];
-                const content = choice && choice.message && choice.message.content;
-                return content || "";
+                return j.choices?.[0]?.message?.content || "";
             } catch {
                 return "";
+            }
+        }
+
+        /* -------------------- UNIVERSAL HTTP REQUEST -------------------- */
+
+        async httpRequest(args) {
+            const url = args.URL || "";
+            const body = args.BODY || "";
+
+            if (!url) return "";
+
+            try {
+                const r = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: body
+                });
+
+                return await r.text();
+            } catch (e) {
+                return String(e);
             }
         }
     }
