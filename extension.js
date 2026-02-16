@@ -99,7 +99,7 @@
                     {
                         opcode: "addValue",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Add value [NAME]",
+                        text: "add value [NAME]",
                         arguments: {
                             NAME: { type: Scratch.ArgumentType.STRING }
                         }
@@ -107,12 +107,9 @@
                     {
                         opcode: "deleteValue",
                         blockType: Scratch.BlockType.COMMAND,
-                        text: "Delete value [NAME]",
+                        text: "delete value [NAME]",
                         arguments: {
-                            NAME: {
-                                type: Scratch.ArgumentType.STRING,
-                                menu: "values"
-                            }
+                            NAME: { type: Scratch.ArgumentType.STRING }
                         }
                     },
                     {
@@ -141,18 +138,11 @@
         /* -------------------- MENU PROVIDERS -------------------- */
 
         getCommandsMenu() {
-            const arr = this.commands.slice();
-            arr.push("---");
-            arr.push("Add command");
-            return arr;
+            return this.commands.slice();
         }
 
         getValuesMenu() {
-            const arr = this.values.slice();
-            arr.push("---");
-            arr.push("Add value");
-            arr.push("Delete value");
-            return arr;
+            return this.values.slice();
         }
 
         /* -------------------- COMMAND MANAGEMENT -------------------- */
@@ -277,21 +267,9 @@
         async whenCommand(args) {
             const cmd = args.CMD;
 
-            if (cmd === "Add command") {
-                const name = prompt("Enter new command:");
-                if (name) {
-                    const trimmed = name.trim();
-                    if (trimmed && !this.commands.includes(trimmed)) {
-                        this.commands.push(trimmed);
-                    }
-                }
-                return false;
-            }
-
             await this.pollUpdates();
 
             if (!this.lastEvent.command) return false;
-            if (cmd === "---") return false;
 
             return this.lastEvent.command === cmd;
         }
