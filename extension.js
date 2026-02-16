@@ -1,6 +1,6 @@
 (function (Scratch) {                                                
     if (!Scratch.extensions) {
-        throw new Error("Scratch extensions not supported");
+        throw new Error("Scratch extensions not supported.");
     }
 
     class DeepSeekTelegram {
@@ -438,3 +438,4 @@
 
 
        
+
